@@ -1,3 +1,5 @@
+#pragma once
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <string>
@@ -11,10 +13,7 @@
 
 class TimeDrivenPlayer{
 public:
-    TimeDrivenPlayer() {
-        window_width = 800;
-        window_height = 600;
-    }
+    TimeDrivenPlayer() {}
 
     ~TimeDrivenPlayer(){
         CloseVideo();
@@ -25,9 +24,9 @@ public:
     void CloseVideo();
 
     void Run(){
-        capture_thread = new std::thread(Capture, this, static_cast<int>(fps / 2));
-        play_thread = new std::thread(Play, this);
-        window_size_thread = new std::thread(MonitorWindowSize, this);
+        thread_capture = new std::thread(Capture, this, static_cast<int>(fps / 2));
+        thread_play = new std::thread(Play, this);
+        thread_window_size = new std::thread(MonitorWindowSize, this);
     }
 
     bool Running(){
@@ -51,6 +50,7 @@ private:
 public:
     double fps;
     double interval;
+    int frame_count;
 
 private:
     std::atomic<int> window_width = 800;
@@ -69,7 +69,7 @@ private:
 
     cv::Mat frame;
     cv::VideoCapture* cap = nullptr;
-	std::thread* play_thread = nullptr;
-    std::thread* window_size_thread = nullptr;
-    std::thread* capture_thread = nullptr;
+	std::thread* thread_play = nullptr;
+    std::thread* thread_window_size = nullptr;
+    std::thread* thread_capture = nullptr;
 };

@@ -935,7 +935,7 @@ namespace MikuMikuWorld
 			    accumulateDuration(context.currentTick, TICKS_PER_BEAT, context.score.tempoChanges);
 		}
 
-		video_player.Update(playing, time);
+		video_player.Update(playing, time - context.workingData.musicOffset / 1000);
 	}
 
 	void ScoreEditorTimeline::updateNotes(ScoreContext& context, EditArgs& edit, Renderer* renderer)
