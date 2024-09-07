@@ -54,19 +54,22 @@ public:
 
 private:
     std::atomic<int> window_width = 800;
-    std::atomic<int> window_height = 600;
+	std::atomic<int> window_height = 600;
 
     std::atomic<bool> running;
     std::atomic<bool> playing;
+    std::mutex frame_mtx;
 
-    std::atomic<double> real_fps = 0.0;
+    std::atomic<double> real_capture_fps = 0.0;
+    std::atomic<double> real_render_fps = 0.0;
     std::atomic<int> frame_id = -1; // 刚显示过的帧
     std::atomic<double> now = 0.0;
-	std::queue<double> history_frame;
+	std::queue<double> history_capture_frame;
+    std::queue<double> history_render_frame;
 
     cv::Mat frame;
     cv::VideoCapture* cap = nullptr;
-    std::thread* play_thread = nullptr;
+	std::thread* play_thread = nullptr;
     std::thread* window_size_thread = nullptr;
     std::thread* capture_thread = nullptr;
 };

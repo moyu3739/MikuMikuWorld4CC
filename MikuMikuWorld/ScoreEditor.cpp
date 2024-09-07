@@ -444,12 +444,14 @@ namespace MikuMikuWorld
 		updateRecentFilesList(filename);
 	}
 
-	bool executeCommand(const std::wstring& command)
+	bool executeCommand(const std::wstring& command, bool show_terminal = false)
 	{
 		STARTUPINFOW si;
 		PROCESS_INFORMATION pi;
 		ZeroMemory(&si, sizeof(si));
 		si.cb = sizeof(si);
+		si.dwFlags = STARTF_USESHOWWINDOW;
+		si.wShowWindow = show_terminal ? SW_SHOW : SW_HIDE;
 		ZeroMemory(&pi, sizeof(pi));
 
 		// 创建进程
@@ -469,10 +471,19 @@ namespace MikuMikuWorld
 		return true;
 	}
 
+	std::string GetProgramDir()
+	{
+		char exeFullPath[MAX_PATH]; // Full path
+		std::string strPath = "";
+
+		GetModuleFileName(NULL,exeFullPath,MAX_PATH); //获取带有可执行文件名路径
+		strPath=(std::string)exeFullPath;
+		int pos = strPath.find_last_of('\\', strPath.length());
+		return strPath.substr(0, pos);  // 返回不带有可执行文件名的路径
+	}
+
 	void ScoreEditor::loadMusic(std::string filename)
 	{
-		std::cout << "---- FILE NAME: " << filename << std::endl;
-
 		std::string fileExtension = IO::File::getFileExtension(filename);
 		std::string audio_filename;
 		std::wstring wFilename = IO::mbToWideStr(filename);
@@ -481,8 +492,8 @@ namespace MikuMikuWorld
 		if (fileExtension == ".mp4" || fileExtension == ".mkv" || fileExtension == ".avi" || fileExtension == ".mov"){
 			// 从视频文件中提取音频，保存为临时文件 .temp.mp3
 			audio_filename = filename + ".temp.mp3";
-			std::wstring cmd = L"D:\\ffmpeg\\bin\\ffmpeg.exe -i \"" + wFilename + L"\" -vn -c:a mp3 -y \"" + wFilename + L".temp.mp3\"";
-			std::wcout << L"---- CMD: " << cmd << std::endl;
+			std::wstring exe_dir = IO::mbToWideStr(GetProgramDir());
+			std::wstring cmd = exe_dir + L"\\ffmpeg.exe -i \"" + wFilename + L"\" -vn -c:a mp3 -y \"" + wFilename + L".temp.mp3\"";
 			executeCommand(cmd);
 		}
 		else{
@@ -496,14 +507,11 @@ namespace MikuMikuWorld
 		if (audio_filename != filename){
 			// 删除临时文件 .temp.mp3
 			std::wstring cmd = L"cmd.exe /C del \"" + wFilename + L".temp.mp3\"";
-			std::wcout << cmd << std::endl;
 			executeCommand(cmd);
 
 			timeline.video_player.OpenVideo(filename);
 			timeline.video_player.Run();
 		}
-
-		std::cout << "LOAD MUSIC" << std::endl;
 
 		if (result.isOk() || filename.empty())
 		{

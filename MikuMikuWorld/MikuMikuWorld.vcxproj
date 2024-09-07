@@ -81,12 +81,12 @@
     <LinkIncremental>true</LinkIncremental>
     <SourcePath>$(SourcePath)</SourcePath>
     <IncludePath>$(SolutionDir)Depends\opencv\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)Depends\opencv\x64\vc16\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)Depends\opencv\x64\vc16\lib;$(SolutionDir)Depends\opencv\x64\vc16\bin;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(SolutionDir)Depends\opencv\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)Depends\opencv\x64\vc16\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)Depends\opencv\x64\vc16\lib;$(SolutionDir)Depends\opencv\x64\vc16\bin;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -129,14 +129,18 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;Version.lib;libcrypto.lib;libssl.lib;$(SolutionDir)Depends\opencv\x64\vc16\lib\opencv_world4100d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;Version.lib;libcrypto.lib;libssl.lib;opencv_world4100d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../Depends/GLFW/lib;../Depends/openssl/lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
 			xcopy "$(ProjectDir)res\" "$(OutDir)res\" /E /Y
 			xcopy "$(ProjectDir)\..\Depends\openssl\bin\*.dll" "$(OutDir)" /E /Y
-		</Command>
+      xcopy "$(ProjectDir)\..\Depends\opencv\x64\vc16\bin\opencv_world4100d.dll" "$(OutDir)" /E /Y
+      xcopy "$(ProjectDir)\..\Depends\opencv\x64\vc16\bin\opencv_videoio_ffmpeg4100_64.dll" "$(OutDir)" /E /Y
+      xcopy "$(ProjectDir)\..\Depends\opencv\x64\vc16\bin\opencv_videoio_msmf4100_64d.dll" "$(OutDir)" /E /Y
+      xcopy "$(ProjectDir)\..\Depends\ffmpeg\bin\ffmpeg.exe" "$(OutDir)" /E /Y
+    </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -159,7 +163,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../Depends/GLFW/lib;../Depends/openssl/lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;Version.lib;libcrypto.lib;libssl.lib;$(SolutionDir)Depends\opencv\x64\vc16\lib\opencv_world4100.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;Version.lib;libcrypto.lib;libssl.lib;opencv_world4100.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='amd64' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
     </Link>
@@ -167,7 +171,11 @@
       <Command>
 			xcopy "$(ProjectDir)res\" "$(OutDir)res\" /E /Y
 			xcopy "$(ProjectDir)\..\Depends\openssl\bin\*.dll" "$(OutDir)" /E /Y
-		</Command>
+      xcopy "$(ProjectDir)\..\Depends\opencv\x64\vc16\bin\opencv_world4100.dll" "$(OutDir)" /E /Y
+      xcopy "$(ProjectDir)\..\Depends\opencv\x64\vc16\bin\opencv_videoio_ffmpeg4100_64.dll" "$(OutDir)" /E /Y
+      xcopy "$(ProjectDir)\..\Depends\opencv\x64\vc16\bin\opencv_videoio_msmf4100_64.dll" "$(OutDir)" /E /Y
+      xcopy "$(ProjectDir)\..\Depends\ffmpeg\bin\ffmpeg.exe" "$(OutDir)" /E /Y
+    </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

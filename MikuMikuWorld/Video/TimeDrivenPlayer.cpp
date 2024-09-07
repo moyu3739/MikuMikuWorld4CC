@@ -1,4 +1,5 @@
 #include "TimeDrivenPlayer.h"
+#include "FreeTimer.h"
 
 
 void TimeDrivenPlayer::OpenVideo(const std::string& path){
@@ -9,7 +10,8 @@ void TimeDrivenPlayer::OpenVideo(const std::string& path){
     interval = 1.0 / fps;
     running = true;
     playing = false;
-    real_fps = 0;
+    real_capture_fps = 0;
+    real_render_fps = 0;
     frame_id = -1;
     now = 0.0;
 }
@@ -17,10 +19,11 @@ void TimeDrivenPlayer::OpenVideo(const std::string& path){
 void TimeDrivenPlayer::CloseVideo(){
     std::cout << "CLOSE VIDEO" << std::endl;
     running = false;
-    capture_thread->join();
+	capture_thread->join();
     play_thread->join();
     window_size_thread->join();
-    history_frame = std::queue<double>();
+    history_capture_frame = std::queue<double>();
+    history_render_frame = std::queue<double>();
     if (cap != nullptr) {
         delete cap;
         cap = nullptr;
@@ -35,7 +38,7 @@ void TimeDrivenPlayer::CloseVideo(){
     }
     if (window_size_thread != nullptr) {
         delete window_size_thread;
-        window_size_thread = nullptr;
+		window_size_thread = nullptr;
     }
 }
 
@@ -73,30 +76,66 @@ cv::Mat TimeDrivenPlayer::ResizeFrame(const cv::Mat& frame, int window_width, in
 void TimeDrivenPlayer::Play(TimeDrivenPlayer* player){
     cv::namedWindow("Video Player", cv::WINDOW_NORMAL); // 允许调整窗口大小
 
+    FreeTimer tm;
+    tm.Start();
+
     while (player->running) {
         double now = player->now;
         int target_frame_id = static_cast<int>((now + player->interval / 2) / player->interval);
         int offset = target_frame_id - player->frame_id;
 
+        double ckpt1 = 0.0, ckpt2 = 0.0, ckpt3 = 0.0, ckpt4 = 0.0, ckpt5 = 0.0;
+
         if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1) break;
         // 调整帧大小以适应窗口，同时保持宽高比例
+        player->frame_mtx.lock();
         if (!player->frame.empty()) {
+            ckpt1 = tm.Read() * 1000;
             cv::Mat resized_frame = ResizeFrame(player->frame, player->window_width, player->window_height);
+            ckpt2 = tm.Read() * 1000;
             if (!resized_frame.empty()) imshow("Video Player", resized_frame);
+            ckpt3 = tm.Read() * 1000;
         }
+        player->frame_mtx.unlock();
+
+        // 更新帧率
+        if (player->history_render_frame.size() > 1){
+            player->real_render_fps = (player->history_render_frame.size() - 1) / (player->history_render_frame.back() - player->history_render_frame.front());
+        }
+        player->history_render_frame.push(now);
+        if (player->history_render_frame.size() > player->fps / 4) player->history_render_frame.pop();
 
         std::string title;
 
+        // 显示当前视频进度
         int now_int = static_cast<int>(now);
         title += std::to_string(now_int / 60) + ":" + std::to_string(now_int % 60 / 10) + std::to_string(now_int % 10);
 
-        if (player->playing)
-            title += "  ( " +
-                (player->real_fps > 1.0 ? std::to_string(static_cast<int>(player->real_fps + 0.5)) : "0")
-                + " fps )";
+        if (player->playing) {
+            // double real_fps = min(player->real_capture_fps, player->real_render_fps); // 实际观察帧率为抓取帧率和渲染帧率的较小值
+            // title += "  ( " +
+            //     (real_fps > 1.0 ? std::to_string(static_cast<int>(real_fps + 0.5)) : "0")
+            //     + " fps )";
+            title += " (render " + std::to_string(player->real_render_fps) + " fps, " + "capture " + std::to_string(player->real_capture_fps) + " fps)";
+        }
+
+        title += " - off: " + std::to_string(offset);
         
+        // cv::setWindowTitle("Video Player", title);
+
+        ckpt4 = tm.Read() * 1000;
+
+        int wait_time = static_cast<int>((target_frame_id * player->interval + player->interval / 2 - now) * 1000);
+		// cv::waitKey(player->playing ? 1 : 100);
+        cv::waitKey(player->playing ? max(1, wait_time / 2) : 100);
+
+        ckpt5 = tm.Read() * 1000;
+
+        title += " - rs: " + std::to_string(ckpt2 - ckpt1);
+        title += " - sh: " + std::to_string(ckpt3 - ckpt2);
+        title += " - wt: " + std::to_string(ckpt5 - ckpt4);
+
         cv::setWindowTitle("Video Player", title);
-		cv::waitKey(1);
     }
     player->running = false;
 
@@ -106,23 +145,21 @@ void TimeDrivenPlayer::Play(TimeDrivenPlayer* player){
 }
 
 void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player, int chase_limit){
-    // std::mutex mtx;
-
     while (player->running) {
         double now = player->now;
         int target_frame_id = static_cast<int>((now + player->interval / 2) / player->interval);
         int offset = target_frame_id - player->frame_id;
 
-        // mtx.lock();
-
         // 处于暂停状态
         if (!player->playing){
             if (offset != 0) { // 暂停状态下，只要不是当前帧，就跳转
                 player->cap->set(cv::CAP_PROP_POS_FRAMES, target_frame_id);
+                player->frame_mtx.lock();
                 if (!player->cap->read(player->frame)) {
                     std::cout << "视频播放完毕" << std::endl;
                     break;
                 }
+                player->frame_mtx.unlock();
                 player->frame_id = target_frame_id;
             }
         }
@@ -130,35 +167,41 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player, int chase_limit){
 		else {
 			if (offset == 0) {}
 			else if (offset == 1) {
+                player->frame_mtx.lock();
 				if (!player->cap->read(player->frame)) {
 					std::cout << "视频播放完毕" << std::endl;
 					break;
 				}
+                player->frame_mtx.unlock();
 				player->frame_id = target_frame_id;
 			}
 			else if (1 < offset && offset < chase_limit) { // 如果进度落后但不超过 chase_limit 帧，则快进
+                player->frame_mtx.lock();
 				if (!player->cap->read(player->frame)) {
 					std::cout << "视频播放完毕" << std::endl;
 					break;
 				}
+                player->frame_mtx.unlock();
 				player->frame_id++;
 			}
 			else { // 如果进度落后超过 chase_limit 帧或超前，则跳转
 				player->cap->set(cv::CAP_PROP_POS_FRAMES, target_frame_id);
+                player->frame_mtx.lock();
 				if (!player->cap->read(player->frame)) {
 					std::cout << "视频播放完毕" << std::endl;
 					break;
 				}
+                player->frame_mtx.unlock();
 				player->frame_id = target_frame_id;
 			}
 		}
 
-        if (offset != 0){ // 渲染了新的视频帧，更新帧率信息
-            if (player->history_frame.size() > 1){
-                player->real_fps = (player->history_frame.size() - 1) / (player->history_frame.back() - player->history_frame.front());
+        if (offset != 0){ // 抓取了新的视频帧，更新帧率信息
+            if (player->history_capture_frame.size() > 1){
+                player->real_capture_fps = (player->history_capture_frame.size() - 1) / (player->history_capture_frame.back() - player->history_capture_frame.front());
             }
-            player->history_frame.push(now);
-            if (player->history_frame.size() > player->fps / 4) player->history_frame.pop();
+            player->history_capture_frame.push(now);
+            if (player->history_capture_frame.size() > player->fps / 4) player->history_capture_frame.pop();
         }
 
         // mtx.unlock();
