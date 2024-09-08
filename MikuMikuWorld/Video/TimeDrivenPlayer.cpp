@@ -43,10 +43,10 @@ void TimeDrivenPlayer::CloseVideo(){
     }
 }
 
-cv::Mat TimeDrivenPlayer::ResizeFrame(const cv::Mat& frame, int window_width, int window_height) {
+void TimeDrivenPlayer::ResizeFrame(const cv::Mat& src, cv::Mat& dst, int window_width, int window_height) {
     // 获取帧的宽高比
-    double aspect_ratio = (double)frame.cols / (double)frame.rows;
-    int new_width, new_height;
+    double aspect_ratio = (double)src.cols / (double)src.rows;
+	int new_width, new_height;
 
     // 根据窗口大小计算新的帧大小，同时保持宽高比例
     if (window_width / aspect_ratio <= window_height) {
@@ -57,21 +57,22 @@ cv::Mat TimeDrivenPlayer::ResizeFrame(const cv::Mat& frame, int window_width, in
         new_height = window_height;
     }
 
-    if (new_width == 0 || new_height == 0) return cv::Mat();
+    if (new_width == 0 || new_height == 0) {
+        dst = cv::Mat();
+        return;
+    }
+
+    // 创建一个黑色背景
+    dst = cv::Mat(window_height, window_width, src.type(), cv::Scalar(0, 0, 0));
 
     // 调整帧大小
     cv:: Mat resized_frame;
-    resize(frame, resized_frame, cv::Size(new_width, new_height));
-
-    // 创建一个黑色背景
-    cv::Mat background(window_height, window_width, frame.type(), cv::Scalar(0, 0, 0));
+    resize(src, resized_frame, cv::Size(new_width, new_height));
 
     // 将调整大小后的帧放置在背景中央
     int x_offset = (window_width - new_width) / 2;
     int y_offset = (window_height - new_height) / 2;
-    resized_frame.copyTo(background(cv::Rect(x_offset, y_offset, new_width, new_height)));
-
-    return background;
+    resized_frame.copyTo(dst(cv::Rect(x_offset, y_offset, new_width, new_height)));
 }
 
 void TimeDrivenPlayer::Play(TimeDrivenPlayer* player){
@@ -92,7 +93,8 @@ void TimeDrivenPlayer::Play(TimeDrivenPlayer* player){
         player->frame_mtx.lock();
         if (!player->frame.empty()) {
             ckpt1 = tm.Read() * 1000;
-            cv::Mat resized_frame = ResizeFrame(player->frame, player->window_width, player->window_height);
+            cv::Mat resized_frame;
+            ResizeFrame(player->frame, resized_frame, player->window_width, player->window_height);
             ckpt2 = tm.Read() * 1000;
             if (!resized_frame.empty()) imshow("Video Player", resized_frame);
             ckpt3 = tm.Read() * 1000;

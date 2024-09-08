@@ -43,7 +43,7 @@ private:
 
     static void MonitorWindowSize(TimeDrivenPlayer* player);
 
-    static cv::Mat ResizeFrame(const cv::Mat& frame, int window_width, int window_height);
+    static void ResizeFrame(const cv::Mat& src, cv::Mat& dst, int window_width, int window_height);
 
     static void Capture(TimeDrivenPlayer* player, int chase_limit);
 
