@@ -3,6 +3,7 @@
 #include "Rendering/Framebuffer.h"
 #include <string>
 #include <memory>
+#include <opencv2/opencv.hpp>
 
 namespace MikuMikuWorld
 {
@@ -26,12 +27,17 @@ namespace MikuMikuWorld
 		bool dirty;
 		bool useJacketBg;
 
+		bool mat_load_new;
+
 		void resizeByRatio(float& w, float& h, const Vector2& tgt, bool vertical);
 
 	  public:
 		Background();
 
+		void newEmpty(int w, int h);
+
 		void load(const std::string& filename);
+		void load(const cv::Mat& cv_mat);
 		void resize(Vector2 target);
 		void process(Renderer* renderer);
 		void dispose();

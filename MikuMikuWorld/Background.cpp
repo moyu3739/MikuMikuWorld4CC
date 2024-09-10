@@ -30,6 +30,15 @@ namespace MikuMikuWorld
 		dirty = true;
 	}
 
+	void Background::load(const cv::Mat& cv_mat) {
+		if(texture == nullptr) texture = std::make_unique<Texture>(cv_mat);
+		else texture->loadMat(cv_mat);
+
+		// framebuffer->resize(texture->getWidth(), texture->getHeight());
+
+		dirty = true;
+	}
+
 	void Background::resizeByRatio(float& w, float& h, const Vector2& tgt, bool vertical)
 	{
 		if (vertical)

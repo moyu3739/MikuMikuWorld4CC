@@ -471,17 +471,6 @@ namespace MikuMikuWorld
 		return true;
 	}
 
-	std::string GetProgramDir()
-	{
-		char exeFullPath[MAX_PATH]; // Full path
-		std::string strPath = "";
-
-		GetModuleFileName(NULL,exeFullPath,MAX_PATH); //获取带有可执行文件名路径
-		strPath=(std::string)exeFullPath;
-		int pos = strPath.find_last_of('\\', strPath.length());
-		return strPath.substr(0, pos);  // 返回不带有可执行文件名的路径
-	}
-
 	void ScoreEditor::loadMusic(std::string filename)
 	{
 		std::string fileExtension = IO::File::getFileExtension(filename);
@@ -489,11 +478,12 @@ namespace MikuMikuWorld
 		std::wstring wFilename = IO::mbToWideStr(filename);
 
 		for(int i = 0; i < fileExtension.size(); i++) fileExtension[i] = std::tolower(fileExtension[i]);
-		if (fileExtension == ".mp4" || fileExtension == ".mkv" || fileExtension == ".avi" || fileExtension == ".mov"){
+		if (fileExtension == ".mp4" || fileExtension == ".avi" || fileExtension == ".mkv"
+				|| fileExtension == ".mov" || fileExtension == ".wmv"){
 			// 从视频文件中提取音频，保存为临时文件 .temp.mp3
 			audio_filename = filename + ".temp.mp3";
-			std::wstring exe_dir = IO::mbToWideStr(GetProgramDir());
-			std::wstring cmd = exe_dir + L"\\ffmpeg.exe -i \"" + wFilename + L"\" -vn -c:a mp3 -y \"" + wFilename + L".temp.mp3\"";
+			std::wstring cmd = IO::mbToWideStr(Application::getAppDir())
+				+ L"ffmpeg.exe -i \"" + wFilename + L"\" -vn -c:a mp3 -y \"" + wFilename + L".temp.mp3\"";
 			executeCommand(cmd);
 		}
 		else{

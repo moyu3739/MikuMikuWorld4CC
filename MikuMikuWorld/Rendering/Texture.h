@@ -4,6 +4,7 @@
 #include "Sprite.h"
 #include "../File.h"
 #include <glad/glad.h>
+#include <opencv2/opencv.hpp>
 
 namespace MikuMikuWorld
 {
@@ -37,9 +38,13 @@ namespace MikuMikuWorld
 	  public:
 		std::vector<Sprite> sprites;
 
+		// Texture(int w, int h);
 		Texture(const std::string& filename, TextureFilterMode min, TextureFilterMode mag);
 		Texture(const std::string& filename, TextureFilterMode filter);
 		Texture(const std::string& filename);
+		Texture(const cv::Mat& cv_mat);
+
+		void loadMat(const cv::Mat& cv_mat);
 
 		inline int getWidth() const { return width; }
 		inline int getHeight() const { return height; }

@@ -3,13 +3,18 @@
 
 
 void TimeDrivenPlayer::OpenVideo(const std::string& path){
+    // std::vector<int> params = {cv::CAP_PROP_HW_ACCELERATION, cv::VIDEO_ACCELERATION_ANY};
+    // cap = new cv::VideoCapture(path, cv::CAP_FFMPEG, params);
     cap = new cv::VideoCapture(path);
     if (!cap->isOpened()) throw std::runtime_error("open video failed");
 
     fps = cap->get(cv::CAP_PROP_FPS);
     interval = 1.0 / fps;
     frame_count = cap->get(cv::CAP_PROP_FRAME_COUNT);
-    running = true;
+    video_width = cap->get(cv::CAP_PROP_FRAME_WIDTH);
+    video_height = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
+    window_running = true;
+    background_running = true;
     playing = false;
     real_capture_fps = 0;
     real_render_fps = 0;
@@ -19,28 +24,31 @@ void TimeDrivenPlayer::OpenVideo(const std::string& path){
 
 void TimeDrivenPlayer::CloseVideo(){
     std::cout << "CLOSE VIDEO" << std::endl;
-    running = false;
+    window_running = false;
+    background_running = false;
     history_capture_frame = std::queue<double>();
     history_render_frame = std::queue<double>();
-    if (cap != nullptr) {
-        delete cap;
-        cap = nullptr;
-    }
     if (thread_capture != nullptr) {
         thread_capture->join();
         delete thread_capture;
         thread_capture = nullptr;
     }
-    if (thread_play != nullptr) {
-        thread_play->join();
-        delete thread_play;
-        thread_play = nullptr;
+    if (thread_window_play != nullptr) {
+        thread_window_play->join();
+        delete thread_window_play;
+        thread_window_play = nullptr;
     }
-    if (thread_window_size != nullptr) {
-        thread_window_size->join();
-        delete thread_window_size;
-		thread_window_size = nullptr;
+    if (thread_monitor_window != nullptr) {
+        thread_monitor_window->join();
+        delete thread_monitor_window;
+		thread_monitor_window = nullptr;
     }
+}
+
+void TimeDrivenPlayer::Run(){
+    thread_capture = new std::thread(Capture, this);
+    thread_window_play = new std::thread(WindowPlay, this);
+    thread_monitor_window = new std::thread(MonitorWindowSize, this);
 }
 
 void TimeDrivenPlayer::ResizeFrame(const cv::Mat& src, cv::Mat& dst, int window_width, int window_height) {
@@ -75,36 +83,36 @@ void TimeDrivenPlayer::ResizeFrame(const cv::Mat& src, cv::Mat& dst, int window_
     resized_frame.copyTo(dst(cv::Rect(x_offset, y_offset, new_width, new_height)));
 }
 
-void TimeDrivenPlayer::Play(TimeDrivenPlayer* player){
+void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
     cv::namedWindow("Video Player", cv::WINDOW_NORMAL); // 允许调整窗口大小
 
     FreeTimer tm;
     tm.Start();
 
-    while (player->running) {
+    while (player->window_running) {
         double now = player->now;
         int target_frame_id = static_cast<int>((now + player->interval / 2) / player->interval);
-        int offset = target_frame_id - player->frame_id;
 
         double ckpt1 = 0.0, ckpt2 = 0.0, ckpt3 = 0.0, ckpt4 = 0.0, ckpt5 = 0.0;
 
         if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1) break;
         // 调整帧大小以适应窗口，同时保持宽高比例
         player->frame_mtx.lock();
-        if (!player->frame.empty()) {
+
+        if (!player->frame_mat.empty()) {
             ckpt1 = tm.Read() * 1000;
             cv::Mat resized_frame;
-            ResizeFrame(player->frame, resized_frame, player->window_width, player->window_height);
+            ResizeFrame(player->frame_mat, resized_frame, player->window_width, player->window_height);
             ckpt2 = tm.Read() * 1000;
             if (!resized_frame.empty()) imshow("Video Player", resized_frame);
             ckpt3 = tm.Read() * 1000;
         }
+
         player->frame_mtx.unlock();
 
         // 更新帧率
-        if (player->history_render_frame.size() > 1){
+        if (player->history_render_frame.size() > 1)
             player->real_render_fps = (player->history_render_frame.size() - 1) / (player->history_render_frame.back() - player->history_render_frame.front());
-        }
         player->history_render_frame.push(now);
         if (player->history_render_frame.size() > player->fps / 4) player->history_render_frame.pop();
 
@@ -114,15 +122,8 @@ void TimeDrivenPlayer::Play(TimeDrivenPlayer* player){
         int now_int = static_cast<int>(now);
         title += std::to_string(now_int / 60) + ":" + std::to_string(now_int % 60 / 10) + std::to_string(now_int % 10);
 
-        if (player->playing) {
-            // double real_fps = min(player->real_capture_fps, player->real_render_fps); // 实际观察帧率为抓取帧率和渲染帧率的较小值
-            // title += "  ( " +
-            //     (real_fps > 1.0 ? std::to_string(static_cast<int>(real_fps + 0.5)) : "0")
-            //     + " fps )";
+        if (player->playing)
             title += " (render " + std::to_string(player->real_render_fps) + " fps, " + "capture " + std::to_string(player->real_capture_fps) + " fps)";
-        }
-
-        title += " - off: " + std::to_string(offset);
         
         // cv::setWindowTitle("Video Player", title);
 
@@ -140,15 +141,16 @@ void TimeDrivenPlayer::Play(TimeDrivenPlayer* player){
 
         cv::setWindowTitle("Video Player", title);
     }
-    player->running = false;
+    player->window_running = false;
 
     // 检查窗口是否需要 destroy
     if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) > 0)
         cv::destroyWindow("Video Player");
 }
 
-void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player, int chase_limit){
-    while (player->running) {
+void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
+    int chase_limit = static_cast<int>(player->fps * 0.5);
+    while (player->Running()) {
         double now = player->now;
         int target_frame_id = static_cast<int>((now + player->interval / 2) / player->interval);
         if (target_frame_id < 0) target_frame_id = 0;
@@ -160,10 +162,9 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player, int chase_limit){
             if (offset != 0) { // 暂停状态下，只要不是当前帧，就跳转
                 player->cap->set(cv::CAP_PROP_POS_FRAMES, target_frame_id);
                 player->frame_mtx.lock();
-                if (!player->cap->read(player->frame)) {
-                    std::cout << "视频播放完毕" << std::endl;
-                    break;
-                }
+
+                player->cap->read(player->frame_mat);
+
                 player->frame_mtx.unlock();
                 player->frame_id = target_frame_id;
             }
@@ -173,29 +174,20 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player, int chase_limit){
 			if (offset == 0) {}
 			else if (offset == 1) {
                 player->frame_mtx.lock();
-				if (!player->cap->read(player->frame)) {
-					std::cout << "视频播放完毕" << std::endl;
-					break;
-				}
+                player->cap->read(player->frame_mat);
                 player->frame_mtx.unlock();
 				player->frame_id = target_frame_id;
 			}
 			else if (1 < offset && offset < chase_limit) { // 如果进度落后但不超过 chase_limit 帧，则快进
                 player->frame_mtx.lock();
-				if (!player->cap->read(player->frame)) {
-					std::cout << "视频播放完毕" << std::endl;
-					break;
-				}
+                player->cap->grab();
                 player->frame_mtx.unlock();
 				player->frame_id++;
 			}
 			else { // 如果进度落后超过 chase_limit 帧或超前，则跳转
 				player->cap->set(cv::CAP_PROP_POS_FRAMES, target_frame_id);
                 player->frame_mtx.lock();
-				if (!player->cap->read(player->frame)) {
-					std::cout << "视频播放完毕" << std::endl;
-					break;
-				}
+				player->cap->read(player->frame_mat);
                 player->frame_mtx.unlock();
 				player->frame_id = target_frame_id;
 			}
@@ -208,10 +200,10 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player, int chase_limit){
             player->history_capture_frame.push(now);
             if (player->history_capture_frame.size() > player->fps / 4) player->history_capture_frame.pop();
         }
-
-        // mtx.unlock();
     }
-    player->running = false;
+    player->window_running = false;
+    player->background_running = false;
+
     delete player->cap;
     player->cap = nullptr;
 }
@@ -219,7 +211,7 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player, int chase_limit){
 void TimeDrivenPlayer::MonitorWindowSize(TimeDrivenPlayer* player) {
     while ((cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1)); // 等待窗口创建
 
-    while (player->running) {
+    while (player->Running()) {
         if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1) break;
 
         cv::Rect window_rect = cv::getWindowImageRect("Video Player");
@@ -227,6 +219,6 @@ void TimeDrivenPlayer::MonitorWindowSize(TimeDrivenPlayer* player) {
         player->window_height = window_rect.height;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    player->running = false;
+    player->window_running = false;
 }
 

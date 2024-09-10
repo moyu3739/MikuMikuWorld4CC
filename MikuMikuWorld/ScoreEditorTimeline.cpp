@@ -936,6 +936,12 @@ namespace MikuMikuWorld
 		}
 
 		video_player.Update(playing, time - context.workingData.musicOffset / 1000);
+		if (video_player.background_running){
+			video_player.LockFrame();
+			const cv::Mat& frame = video_player.GetFrame();
+			if (!frame.empty()) background.load(frame);
+			video_player.UnlockFrame();
+		}
 	}
 
 	void ScoreEditorTimeline::updateNotes(ScoreContext& context, EditArgs& edit, Renderer* renderer)

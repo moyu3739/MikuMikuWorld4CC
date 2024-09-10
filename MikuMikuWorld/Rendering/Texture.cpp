@@ -38,6 +38,60 @@ namespace MikuMikuWorld
 	{
 	}
 
+	// Texture::Texture(int w, int h){
+	// 	filename = "From cv::Mat";
+	// 	name = "cv_mat";
+	// 	width = w;
+	// 	height = h;
+
+	// 	glGenTextures(1, &glID);
+	// 	glBindTexture(GL_TEXTURE_2D, glID);
+
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)TextureFilterMode::Linear);
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)TextureFilterMode::Linear);
+
+	// 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// 	sprites.push_back(Sprite(name, 0, 0, width, height));
+	// }
+
+	Texture::Texture(const cv::Mat& cv_mat){
+		filename = "From cv::Mat";
+		name = "cv_mat";
+		// width = cv_mat.cols;
+		// height = cv_mat.rows;
+		int nrChannels = cv_mat.channels();
+		GLenum format = nrChannels == 3 ? GL_BGR : GL_BGRA;
+		
+		glGenTextures(1, &glID);
+		glBindTexture(GL_TEXTURE_2D, glID);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cv_mat.cols, cv_mat.rows, 0, format, GL_UNSIGNED_BYTE, cv_mat.data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)TextureFilterMode::Linear);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)TextureFilterMode::Linear);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		sprites.push_back(Sprite(name, 0, 0, cv_mat.cols, cv_mat.rows));
+	}
+
+	void Texture::loadMat(const cv::Mat& cv_mat){
+		// 在已经存在的纹理上加载cv::Mat
+		if (glID == 0) throw std::runtime_error("No Texture");
+		int nrChannels = cv_mat.channels();
+		GLenum format = nrChannels == 3 ? GL_BGR : GL_BGRA;
+
+		glBindTexture(GL_TEXTURE_2D, glID);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cv_mat.cols, cv_mat.rows, 0, format, GL_UNSIGNED_BYTE, cv_mat.data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
 	void Texture::bind() const { glBindTexture(GL_TEXTURE_2D, glID); }
 
 	void Texture::dispose() const { glDeleteTextures(1, &glID); }
