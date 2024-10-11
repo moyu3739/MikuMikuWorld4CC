@@ -38,6 +38,7 @@ namespace MikuMikuWorld
 
 		void load(const std::string& filename);
 		void load(const cv::Mat& cv_mat);
+		void load();
 		void resize(Vector2 target);
 		void process(Renderer* renderer);
 		void dispose();

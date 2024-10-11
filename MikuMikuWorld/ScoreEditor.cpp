@@ -250,10 +250,7 @@ namespace MikuMikuWorld
 
 		if (settingsWindow.isBackgroundChangePending)
 		{
-			static const std::string defaultBackgroundPath =
-			    Application::getAppDir() + "res\\textures\\default.png";
-			timeline.background.load(config.backgroundImage.empty() ? defaultBackgroundPath
-			                                                        : config.backgroundImage);
+			timeline.background.load();
 			settingsWindow.isBackgroundChangePending = false;
 		}
 
@@ -480,10 +477,10 @@ namespace MikuMikuWorld
 		for(int i = 0; i < fileExtension.size(); i++) fileExtension[i] = std::tolower(fileExtension[i]);
 		if (fileExtension == ".mp4" || fileExtension == ".avi" || fileExtension == ".mkv"
 				|| fileExtension == ".mov" || fileExtension == ".wmv"){
-			// 从视频文件中提取音频，保存为临时文件 .temp.mp3
-			audio_filename = filename + ".temp.mp3";
+			// 从视频文件中提取音频，保存为临时文件 .temp.flac
+			audio_filename = filename + ".temp.flac";
 			std::wstring cmd = IO::mbToWideStr(Application::getAppDir())
-				+ L"ffmpeg.exe -i \"" + wFilename + L"\" -vn -c:a mp3 -y \"" + wFilename + L".temp.mp3\"";
+				+ L"ffmpeg.exe -i \"" + wFilename + L"\" -vn -c:a flac -y \"" + wFilename + L".temp.flac\"";
 			executeCommand(cmd);
 		}
 		else{
@@ -492,15 +489,19 @@ namespace MikuMikuWorld
 
 		Result result = context.audio.loadMusic(audio_filename);
 
-		if (timeline.video_player.Running()) timeline.video_player.CloseVideo();
+		timeline.video_player.CloseVideo();
+		// if (timeline.video_player.Running()) timeline.video_player.CloseVideo();
 		// 如果打开了视频文件，删除临时文件，并播放视频
 		if (audio_filename != filename){
-			// 删除临时文件 .temp.mp3
-			std::wstring cmd = L"cmd.exe /C del \"" + wFilename + L".temp.mp3\"";
+			// 删除临时文件 .temp.flac
+			std::wstring cmd = L"cmd.exe /C del \"" + wFilename + L".temp.flac\"";
 			executeCommand(cmd);
 
 			timeline.video_player.OpenVideo(filename);
 			timeline.video_player.Run();
+		}
+		else{
+			timeline.background.load(); // 重新加载背景
 		}
 
 		if (result.isOk() || filename.empty())

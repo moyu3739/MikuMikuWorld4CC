@@ -10,7 +10,10 @@
 #include <chrono>
 #include <vector>
 #include <queue>
-#include "../Background.h" 
+#include "../Background.h"
+
+#define DEL(ptr) if (ptr != nullptr) {delete ptr; ptr = nullptr;}
+#define DEL_THREAD(ptr) if (ptr != nullptr) {ptr->join(); delete ptr; ptr = nullptr;}
 
 
 class TimeDrivenPlayer{
@@ -27,8 +30,18 @@ public:
 
     void Run();
 
+    void HideVideo();
+
+    void SetPlayModeBackground();
+
+    void SetPlayModeWindow();
+
     bool Running() const{
         return window_running || background_running;
+    }
+
+    bool Playable() const{
+        return cap != nullptr;
     }
 
     const cv::Mat& GetFrame() const{
@@ -57,8 +70,6 @@ private:
 
     static void Capture(TimeDrivenPlayer* player);
 
-    static void Fetch(TimeDrivenPlayer* player);
-
     static uint64_t HashMat(const cv::Mat& mat);
 
 public:
@@ -67,14 +78,17 @@ public:
     int frame_count;
     int video_width;
     int video_height;
-    std::atomic<bool> window_running;
-    std::atomic<bool> background_running;
+    std::atomic<bool> window_running = false;
+    std::atomic<bool> background_running = false;
 
 private:
+    bool window_running_preset = false;
+    bool background_running_preset = true;
+
     std::atomic<int> window_width = 800;
 	std::atomic<int> window_height = 600;
     
-    std::atomic<bool> playing;
+    std::atomic<bool> playing = false;
     std::atomic<double> now = 0.0;
     std::atomic<int> frame_id = -1; // `frame_mat` 的帧序号
     cv::Mat frame_mat;

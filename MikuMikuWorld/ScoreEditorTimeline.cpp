@@ -907,6 +907,27 @@ namespace MikuMikuWorld
 		ImGui::SameLine();
 		ImGui::Text(rhythmString.c_str());
 
+		////////////////////////////////////////////////////////////////
+
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+
+		if (UI::transparentButton(ICON_FA_VIDEO, UI::btnSmall, false, video_player.Playable())){
+			if (video_player.window_running){ // to not play video
+				video_player.HideVideo();
+			}
+			else if (video_player.background_running) { // to play video in window
+				video_player.SetPlayModeWindow();
+				background.load();
+			}
+			else if (!video_player.window_running && !video_player.background_running){ // to play video in background
+				video_player.SetPlayModeBackground();
+			}
+		}
+
+		////////////////////////////////////////////////////////////////
+
 		updateScrollbar();
 
 		updateNoteSE(context);
@@ -2778,9 +2799,7 @@ namespace MikuMikuWorld
 		framebuffer = std::make_unique<Framebuffer>(1920, 1080);
 		playbackSpeed = 1.0f;
 
-		background.load(config.backgroundImage.empty()
-		                    ? (Application::getAppDir() + "res\\textures\\default.png")
-		                    : config.backgroundImage);
+		background.load();
 		background.setBrightness(0.67);
 
 		timelineInstance = this;

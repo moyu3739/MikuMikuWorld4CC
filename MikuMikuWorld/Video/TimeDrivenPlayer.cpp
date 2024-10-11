@@ -13,40 +13,66 @@ void TimeDrivenPlayer::OpenVideo(const std::string& path){
     frame_count = cap->get(cv::CAP_PROP_FRAME_COUNT);
     video_width = cap->get(cv::CAP_PROP_FRAME_WIDTH);
     video_height = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
-    window_running = true;
-    background_running = true;
+    window_running = window_running_preset;
+    background_running = background_running_preset;
     playing = false;
     real_capture_fps = 0;
     real_render_fps = 0;
-    frame_id = -1;
-    now = 0.0;
+    frame_id = -1; // 设置一个不存在的帧序号，以便在下一次抓取时强制更新帧
 }
 
 void TimeDrivenPlayer::CloseVideo(){
-    std::cout << "CLOSE VIDEO" << std::endl;
-    window_running = false;
-    background_running = false;
-    history_capture_frame = std::queue<double>();
-    history_render_frame = std::queue<double>();
-    if (thread_capture != nullptr) {
-        thread_capture->join();
-        delete thread_capture;
-        thread_capture = nullptr;
+    if (Running()) {
+        window_running_preset = window_running; // 保存窗口运行状态
+        background_running_preset = background_running;
     }
-    if (thread_window_play != nullptr) {
-        thread_window_play->join();
-        delete thread_window_play;
-        thread_window_play = nullptr;
-    }
-    if (thread_monitor_window != nullptr) {
-        thread_monitor_window->join();
-        delete thread_monitor_window;
-		thread_monitor_window = nullptr;
-    }
+    HideVideo();
+    DEL(cap);
 }
 
 void TimeDrivenPlayer::Run(){
     thread_capture = new std::thread(Capture, this);
+    if (window_running){
+        thread_window_play = new std::thread(WindowPlay, this);
+        thread_monitor_window = new std::thread(MonitorWindowSize, this);
+    }
+}
+
+void TimeDrivenPlayer::HideVideo(){
+    window_running = false;
+    background_running = false;
+    history_capture_frame = std::queue<double>();
+    history_render_frame = std::queue<double>();
+    DEL_THREAD(thread_capture);
+    DEL_THREAD(thread_window_play)
+    DEL_THREAD(thread_monitor_window)
+}
+
+void TimeDrivenPlayer::SetPlayModeBackground(){
+    bool previous_running = Running();
+    background_running = true;
+    window_running = false;
+
+    if (!previous_running) { // 重启抓取线程
+        DEL_THREAD(thread_capture);
+        frame_id = -1; // 设置一个不存在的帧序号，以便在下一次抓取时强制更新帧
+        thread_capture = new std::thread(Capture, this);
+    }
+}
+
+void TimeDrivenPlayer::SetPlayModeWindow(){
+    bool previous_running = Running();
+    window_running = true;
+    background_running = false;
+
+    if (!previous_running) { // 重启抓取线程
+        DEL_THREAD(thread_capture);
+        frame_id = -1; // 设置一个不存在的帧序号，以便在下一次抓取时强制更新帧
+        thread_capture = new std::thread(Capture, this);
+    }
+    
+    DEL_THREAD(thread_window_play)
+    DEL_THREAD(thread_monitor_window)
     thread_window_play = new std::thread(WindowPlay, this);
     thread_monitor_window = new std::thread(MonitorWindowSize, this);
 }
@@ -203,9 +229,10 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
     }
     player->window_running = false;
     player->background_running = false;
-
-    delete player->cap;
-    player->cap = nullptr;
+    // 清空帧内容
+    player->frame_mtx.lock();
+    player->frame_mat = cv::Mat();
+    player->frame_mtx.unlock();
 }
 
 void TimeDrivenPlayer::MonitorWindowSize(TimeDrivenPlayer* player) {

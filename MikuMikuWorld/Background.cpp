@@ -3,6 +3,8 @@
 #include "ResourceManager.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/Framebuffer.h"
+#include "Application.h"
+#include "ApplicationConfiguration.h"
 
 namespace MikuMikuWorld
 {
@@ -37,6 +39,11 @@ namespace MikuMikuWorld
 		// framebuffer->resize(texture->getWidth(), texture->getHeight());
 
 		dirty = true;
+	}
+
+	void Background::load() {
+		static const std::string defaultBackgroundPath = Application::getAppDir() + "res\\textures\\default.png";
+		load(config.backgroundImage.empty() ? defaultBackgroundPath : config.backgroundImage);
 	}
 
 	void Background::resizeByRatio(float& w, float& h, const Vector2& tgt, bool vertical)
