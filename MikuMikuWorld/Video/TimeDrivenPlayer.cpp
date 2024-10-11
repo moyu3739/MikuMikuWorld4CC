@@ -16,7 +16,7 @@ void TimeDrivenPlayer::OpenVideo(const std::string& path){
     window_running = window_running_preset;
     background_running = background_running_preset;
     playing = false;
-    real_capture_fps = 0;
+    // real_capture_fps = 0;
     real_render_fps = 0;
     frame_id = -1; // 设置一个不存在的帧序号，以便在下一次抓取时强制更新帧
 }
@@ -41,7 +41,7 @@ void TimeDrivenPlayer::Run(){
 void TimeDrivenPlayer::HideVideo(){
     window_running = false;
     background_running = false;
-    history_capture_frame = std::queue<double>();
+    // history_capture_frame = std::queue<double>();
     history_render_frame = std::queue<double>();
     DEL_THREAD(thread_capture);
     DEL_THREAD(thread_window_play)
@@ -119,19 +119,14 @@ void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
         double now = player->now;
         int target_frame_id = static_cast<int>((now + player->interval / 2) / player->interval);
 
-        double ckpt1 = 0.0, ckpt2 = 0.0, ckpt3 = 0.0, ckpt4 = 0.0, ckpt5 = 0.0;
-
         if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1) break;
         // 调整帧大小以适应窗口，同时保持宽高比例
         player->frame_mtx.lock();
 
         if (!player->frame_mat.empty()) {
-            ckpt1 = tm.Read() * 1000;
             cv::Mat resized_frame;
             ResizeFrame(player->frame_mat, resized_frame, player->window_width, player->window_height);
-            ckpt2 = tm.Read() * 1000;
             if (!resized_frame.empty()) imshow("Video Player", resized_frame);
-            ckpt3 = tm.Read() * 1000;
         }
 
         player->frame_mtx.unlock();
@@ -143,29 +138,16 @@ void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
         if (player->history_render_frame.size() > player->fps / 4) player->history_render_frame.pop();
 
         std::string title;
-
         // 显示当前视频进度
         int now_int = static_cast<int>(now);
         title += std::to_string(now_int / 60) + ":" + std::to_string(now_int % 60 / 10) + std::to_string(now_int % 10);
-
-        if (player->playing)
-            title += " (render " + std::to_string(player->real_render_fps) + " fps, " + "capture " + std::to_string(player->real_capture_fps) + " fps)";
-        
-        // cv::setWindowTitle("Video Player", title);
-
-        ckpt4 = tm.Read() * 1000;
+        // if (player->playing)
+        //     title += " (render " + std::to_string(player->real_render_fps) + " fps, " + "capture " + std::to_string(player->real_capture_fps) + " fps)";
+        title += " (" + std::to_string(static_cast<int>(min(player->real_render_fps.load(), player->fps) + 0.5)) + " FPS)";
+        cv::setWindowTitle("Video Player", title);
 
         int wait_time = static_cast<int>((target_frame_id * player->interval + player->interval / 2 - now) * 1000);
-		// cv::waitKey(player->playing ? 1 : 100);
         cv::waitKey(player->playing ? max(1, wait_time / 2) : 100);
-
-        ckpt5 = tm.Read() * 1000;
-
-        title += " - rs: " + std::to_string(ckpt2 - ckpt1);
-        title += " - sh: " + std::to_string(ckpt3 - ckpt2);
-        title += " - wt: " + std::to_string(ckpt5 - ckpt4);
-
-        cv::setWindowTitle("Video Player", title);
     }
     player->window_running = false;
 
@@ -219,13 +201,13 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
 			}
 		}
 
-        if (offset != 0){ // 抓取了新的视频帧，更新帧率信息
-            if (player->history_capture_frame.size() > 1){
-                player->real_capture_fps = (player->history_capture_frame.size() - 1) / (player->history_capture_frame.back() - player->history_capture_frame.front());
-            }
-            player->history_capture_frame.push(now);
-            if (player->history_capture_frame.size() > player->fps / 4) player->history_capture_frame.pop();
-        }
+        // if (offset != 0){ // 抓取了新的视频帧，更新帧率信息
+        //     if (player->history_capture_frame.size() > 1){
+        //         player->real_capture_fps = (player->history_capture_frame.size() - 1) / (player->history_capture_frame.back() - player->history_capture_frame.front());
+        //     }
+        //     player->history_capture_frame.push(now);
+        //     if (player->history_capture_frame.size() > player->fps / 4) player->history_capture_frame.pop();
+        // }
     }
     player->window_running = false;
     player->background_running = false;
