@@ -490,7 +490,6 @@ namespace MikuMikuWorld
 		Result result = context.audio.loadMusic(audio_filename);
 
 		timeline.video_player.CloseVideo();
-		// if (timeline.video_player.Running()) timeline.video_player.CloseVideo();
 		// 如果打开了视频文件，删除临时文件，并播放视频
 		if (audio_filename != filename){
 			// 删除临时文件 .temp.flac

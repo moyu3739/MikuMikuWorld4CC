@@ -10,7 +10,6 @@
 #include <chrono>
 #include <vector>
 #include <queue>
-#include "../Background.h"
 
 #define DEL(ptr) if (ptr != nullptr) {delete ptr; ptr = nullptr;}
 #define DEL_THREAD(ptr) if (ptr != nullptr) {ptr->join(); delete ptr; ptr = nullptr;}
@@ -33,8 +32,6 @@ public:
     void OpenVideo(const std::string& path);
 
     void CloseVideo();
-
-    // void Run();
 
     void HideVideo();
 
@@ -111,9 +108,7 @@ private:
     cv::Mat frame_mat;
     std::mutex frame_mtx;
     
-    // std::atomic<double> real_capture_fps = 0.0;
     std::atomic<double> real_render_fps = 0.0;
-	// std::queue<double> history_capture_frame;
     std::queue<double> history_render_frame;
 
     cv::VideoCapture* cap = nullptr;

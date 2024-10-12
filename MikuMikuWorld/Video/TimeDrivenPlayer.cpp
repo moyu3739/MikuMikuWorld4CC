@@ -99,7 +99,7 @@ void TimeDrivenPlayer::ResizeFrame(const cv::Mat& src, cv::Mat& dst, int window_
     dst = cv::Mat(window_height, window_width, src.type(), cv::Scalar(0, 0, 0));
 
     // 调整帧大小
-    cv:: Mat resized_frame;
+    cv::Mat resized_frame;
     resize(src, resized_frame, cv::Size(new_width, new_height));
 
     // 将调整大小后的帧放置在背景中央
