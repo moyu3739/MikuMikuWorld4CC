@@ -16,6 +16,12 @@
 #define DEL_THREAD(ptr) if (ptr != nullptr) {ptr->join(); delete ptr; ptr = nullptr;}
 
 
+enum PlayMode{
+    BACKGROUND,
+    WINDOW
+};
+
+
 class TimeDrivenPlayer{
 public:
     TimeDrivenPlayer() {}
@@ -28,16 +34,24 @@ public:
 
     void CloseVideo();
 
-    void Run();
+    // void Run();
 
     void HideVideo();
 
-    void SetPlayModeBackground();
+    void ShowVideo();
 
-    void SetPlayModeWindow();
+    void ShowVideoOnPlayMode(PlayMode play_mode);
 
     bool Running() const{
         return window_running || background_running;
+    }
+
+    bool WindowRunning() const{
+        return window_running;
+    }
+
+    bool BackgroundRunning() const{
+        return background_running;
     }
 
     bool Playable() const{
@@ -72,18 +86,21 @@ private:
 
     static uint64_t HashMat(const cv::Mat& mat);
 
+    void ShowVideoOnBackground();
+
+    void ShowVideoOnWindow();
+
 public:
     double fps;
     double interval;
     int frame_count;
     int video_width;
     int video_height;
+    PlayMode play_mode = BACKGROUND;
+    
+private:
     std::atomic<bool> window_running = false;
     std::atomic<bool> background_running = false;
-
-private:
-    bool window_running_preset = false;
-    bool background_running_preset = true;
 
     std::atomic<int> window_width = 800;
 	std::atomic<int> window_height = 600;
@@ -96,7 +113,6 @@ private:
     
     // std::atomic<double> real_capture_fps = 0.0;
     std::atomic<double> real_render_fps = 0.0;
-    
 	// std::queue<double> history_capture_frame;
     std::queue<double> history_render_frame;
 

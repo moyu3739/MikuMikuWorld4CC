@@ -1,5 +1,4 @@
 #include "TimeDrivenPlayer.h"
-#include "FreeTimer.h"
 
 
 void TimeDrivenPlayer::OpenVideo(const std::string& path){
@@ -13,45 +12,44 @@ void TimeDrivenPlayer::OpenVideo(const std::string& path){
     frame_count = cap->get(cv::CAP_PROP_FRAME_COUNT);
     video_width = cap->get(cv::CAP_PROP_FRAME_WIDTH);
     video_height = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
-    window_running = window_running_preset;
-    background_running = background_running_preset;
     playing = false;
-    // real_capture_fps = 0;
     real_render_fps = 0;
     frame_id = -1; // 设置一个不存在的帧序号，以便在下一次抓取时强制更新帧
 }
 
 void TimeDrivenPlayer::CloseVideo(){
-    if (Running()) {
-        window_running_preset = window_running; // 保存窗口运行状态
-        background_running_preset = background_running;
-    }
     HideVideo();
     DEL(cap);
-}
-
-void TimeDrivenPlayer::Run(){
-    thread_capture = new std::thread(Capture, this);
-    if (window_running){
-        thread_window_play = new std::thread(WindowPlay, this);
-        thread_monitor_window = new std::thread(MonitorWindowSize, this);
-    }
 }
 
 void TimeDrivenPlayer::HideVideo(){
     window_running = false;
     background_running = false;
-    // history_capture_frame = std::queue<double>();
     history_render_frame = std::queue<double>();
     DEL_THREAD(thread_capture);
-    DEL_THREAD(thread_window_play)
-    DEL_THREAD(thread_monitor_window)
+    DEL_THREAD(thread_window_play);
+    DEL_THREAD(thread_monitor_window);
 }
 
-void TimeDrivenPlayer::SetPlayModeBackground(){
+void TimeDrivenPlayer::ShowVideo(){
+    switch (play_mode){
+        case BACKGROUND: ShowVideoOnBackground(); break;
+        case WINDOW: ShowVideoOnWindow(); break;
+    }
+}
+
+void TimeDrivenPlayer::ShowVideoOnPlayMode(PlayMode play_mode){
+    this->play_mode = play_mode;
+    ShowVideo();
+}
+
+void TimeDrivenPlayer::ShowVideoOnBackground(){
     bool previous_running = Running();
     background_running = true;
     window_running = false;
+
+    DEL_THREAD(thread_window_play);
+    DEL_THREAD(thread_monitor_window);
 
     if (!previous_running) { // 重启抓取线程
         DEL_THREAD(thread_capture);
@@ -60,10 +58,13 @@ void TimeDrivenPlayer::SetPlayModeBackground(){
     }
 }
 
-void TimeDrivenPlayer::SetPlayModeWindow(){
+void TimeDrivenPlayer::ShowVideoOnWindow(){
     bool previous_running = Running();
     window_running = true;
     background_running = false;
+
+    DEL_THREAD(thread_window_play);
+    DEL_THREAD(thread_monitor_window);
 
     if (!previous_running) { // 重启抓取线程
         DEL_THREAD(thread_capture);
@@ -71,8 +72,6 @@ void TimeDrivenPlayer::SetPlayModeWindow(){
         thread_capture = new std::thread(Capture, this);
     }
     
-    DEL_THREAD(thread_window_play)
-    DEL_THREAD(thread_monitor_window)
     thread_window_play = new std::thread(WindowPlay, this);
     thread_monitor_window = new std::thread(MonitorWindowSize, this);
 }
@@ -111,9 +110,7 @@ void TimeDrivenPlayer::ResizeFrame(const cv::Mat& src, cv::Mat& dst, int window_
 
 void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
     cv::namedWindow("Video Player", cv::WINDOW_NORMAL); // 允许调整窗口大小
-
-    FreeTimer tm;
-    tm.Start();
+    cv::setWindowProperty("Video Player", cv::WND_PROP_TOPMOST, 1); // 置顶窗口
 
     while (player->window_running) {
         double now = player->now;
@@ -141,13 +138,13 @@ void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
         // 显示当前视频进度
         int now_int = static_cast<int>(now);
         title += std::to_string(now_int / 60) + ":" + std::to_string(now_int % 60 / 10) + std::to_string(now_int % 10);
-        // if (player->playing)
-        //     title += " (render " + std::to_string(player->real_render_fps) + " fps, " + "capture " + std::to_string(player->real_capture_fps) + " fps)";
-        title += " (" + std::to_string(static_cast<int>(min(player->real_render_fps.load(), player->fps) + 0.5)) + " FPS)";
+        // 帧率
+        if (player->playing)
+            title += " (" + std::to_string(static_cast<int>(std::min(player->real_render_fps.load(), player->fps) + 0.5)) + " FPS)";
         cv::setWindowTitle("Video Player", title);
 
         int wait_time = static_cast<int>((target_frame_id * player->interval + player->interval / 2 - now) * 1000);
-        cv::waitKey(player->playing ? max(1, wait_time / 2) : 100);
+        cv::waitKey(player->playing ? std::max(1, wait_time / 2) : 100);
     }
     player->window_running = false;
 
@@ -200,17 +197,10 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
 				player->frame_id = target_frame_id;
 			}
 		}
-
-        // if (offset != 0){ // 抓取了新的视频帧，更新帧率信息
-        //     if (player->history_capture_frame.size() > 1){
-        //         player->real_capture_fps = (player->history_capture_frame.size() - 1) / (player->history_capture_frame.back() - player->history_capture_frame.front());
-        //     }
-        //     player->history_capture_frame.push(now);
-        //     if (player->history_capture_frame.size() > player->fps / 4) player->history_capture_frame.pop();
-        // }
     }
     player->window_running = false;
     player->background_running = false;
+    
     // 清空帧内容
     player->frame_mtx.lock();
     player->frame_mat = cv::Mat();
@@ -220,7 +210,7 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
 void TimeDrivenPlayer::MonitorWindowSize(TimeDrivenPlayer* player) {
     while ((cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1)); // 等待窗口创建
 
-    while (player->Running()) {
+    while (player->window_running) {
         if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1) break;
 
         cv::Rect window_rect = cv::getWindowImageRect("Video Player");

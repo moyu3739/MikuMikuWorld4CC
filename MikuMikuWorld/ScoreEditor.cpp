@@ -498,7 +498,7 @@ namespace MikuMikuWorld
 			executeCommand(cmd);
 
 			timeline.video_player.OpenVideo(filename);
-			timeline.video_player.Run();
+			timeline.video_player.ShowVideo();
 		}
 		else{
 			timeline.background.load(); // 重新加载背景

@@ -913,16 +913,32 @@ namespace MikuMikuWorld
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 		ImGui::SameLine();
 
-		if (UI::transparentButton(ICON_FA_VIDEO, UI::btnSmall, false, video_player.Playable())){
-			if (video_player.window_running){ // to not play video
+		if (video_player.Running()) { // video originally running
+			if (UI::transparentButton(ICON_FA_VIDEO, UI::btnSmall, false, video_player.Playable())) {
+				// to not play video
 				video_player.HideVideo();
+				if (video_player.play_mode == BACKGROUND) background.load();
 			}
-			else if (video_player.background_running) { // to play video in window
-				video_player.SetPlayModeWindow();
+		}
+		else { // video player originally not running
+			if (UI::transparentButton(ICON_FA_VIDEO_SLASH, UI::btnSmall, false, video_player.Playable())){
+				// to play video
+				video_player.ShowVideo();
+			}
+		}
+
+		ImGui::SameLine();
+		if (video_player.play_mode == BACKGROUND) {
+			if (UI::transparentButton(ICON_FA_EXTERNAL_LINK_ALT, UI::btnSmall, false, video_player.Running())) {
+				// to show video on window
+				video_player.ShowVideoOnPlayMode(WINDOW);
 				background.load();
 			}
-			else if (!video_player.window_running && !video_player.background_running){ // to play video in background
-				video_player.SetPlayModeBackground();
+		}
+		else if (video_player.play_mode == WINDOW) {
+			if (UI::transparentButton(ICON_FA_EXPAND, UI::btnSmall, false, video_player.Running())) {
+				// to show video on background
+				video_player.ShowVideoOnPlayMode(BACKGROUND);
 			}
 		}
 
@@ -957,7 +973,7 @@ namespace MikuMikuWorld
 		}
 
 		video_player.Update(playing, time - context.workingData.musicOffset / 1000);
-		if (video_player.background_running){
+		if (video_player.BackgroundRunning()){
 			video_player.LockFrame();
 			const cv::Mat& frame = video_player.GetFrame();
 			if (!frame.empty()) background.load(frame);
