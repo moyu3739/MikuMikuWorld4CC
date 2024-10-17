@@ -62,7 +62,7 @@ namespace MikuMikuWorld
 				IO::FileDialog fileDialog{};
 				fileDialog.title = "Open Audio File";
 				fileDialog.filters = { { "Audio Files", "*.mp3;*.wav;*.flac;*.ogg" },
-									   { "Video Files", "*.mp4;*.avi;*.mkv;*.wmv;*.mov"},
+									   { "Video Files", "*.mp4;*.avi;*.mkv;*.wmv"},
 					                   { IO::allFilesName, IO::allFilesFilter } };
 				fileDialog.parentWindowHandle = Application::windowState.windowHandle;
 

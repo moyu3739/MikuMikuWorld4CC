@@ -13,6 +13,7 @@
 
 #define DEL(ptr) if (ptr != nullptr) {delete ptr; ptr = nullptr;}
 #define DEL_THREAD(ptr) if (ptr != nullptr) {ptr->join(); delete ptr; ptr = nullptr;}
+#define ROUND(x) (static_cast<int>((x) + 0.5))
 
 
 enum PlayMode{
@@ -72,6 +73,12 @@ public:
         this->now = now;
     }
 
+    bool FrameReady(unsigned int backend_id) const;
+
+    void SetFrameHandled(unsigned int backend_id){
+        frame_ready &= ~(1u << backend_id);
+    }
+
 private:
     static void WindowPlay(TimeDrivenPlayer* player);
 
@@ -81,11 +88,43 @@ private:
 
     static void Capture(TimeDrivenPlayer* player);
 
-    static uint64_t HashMat(const cv::Mat& mat);
-
     void ShowVideoOnBackground();
 
     void ShowVideoOnWindow();
+
+    void SetFrameReady(){
+        frame_ready = 0xFFFFFFFF;
+    }
+
+    // 更新渲染帧率
+    void UpdateHistoryRenderFrame(){
+        const int window_size = fps / 2;
+        history_render_frame.push(now);
+        if (history_render_frame.size() > window_size) history_render_frame.pop();
+    }
+
+    // 计算渲染帧率
+    double RenderFPS(){
+        if (history_render_frame.size() < 2) return 0;
+        double fps = (history_render_frame.size() - 1) / (history_render_frame.back() - history_render_frame.front());
+        if (fps < 0) return 0;
+        else return fps;
+    }
+
+    // 更新取帧帧率
+    void UpdateHistoryCaptureFrame(){
+        const int window_size = fps / 2;
+        history_capture_frame.push(now);
+        if (history_capture_frame.size() > window_size) history_capture_frame.pop();
+    }
+
+    // 计算取帧帧率
+    double CaptureFPS(){
+        if (history_capture_frame.size() < 2) return 0;
+        double fps = (history_capture_frame.size() - 1) / (history_capture_frame.back() - history_capture_frame.front());
+        if (fps < 0) return 0;
+        else return fps;
+    }
 
 public:
     double fps;
@@ -94,6 +133,7 @@ public:
     int video_width;
     int video_height;
     PlayMode play_mode = BACKGROUND;
+    bool fps_lock = false;
     
 private:
     std::atomic<bool> window_running = false;
@@ -105,11 +145,13 @@ private:
     std::atomic<bool> playing = false;
     std::atomic<double> now = 0.0;
     std::atomic<int> frame_id = -1; // `frame_mat` 的帧序号
+
+    std::atomic<unsigned int> frame_ready; // 用于标记帧是否已经被处理，第 i 位为 1 表示第 i 个后端已经处理了该帧
     cv::Mat frame_mat;
     std::mutex frame_mtx;
     
-    std::atomic<double> real_render_fps = 0.0;
     std::queue<double> history_render_frame;
+    std::queue<double> history_capture_frame;
 
     cv::VideoCapture* cap = nullptr;
 	std::thread* thread_window_play = nullptr;

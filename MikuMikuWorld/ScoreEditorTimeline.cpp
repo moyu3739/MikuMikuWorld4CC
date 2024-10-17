@@ -407,8 +407,10 @@ namespace MikuMikuWorld
 		{
 			const float bgWidth = static_cast<float>(background.getWidth());
 			const float bgHeight = static_cast<float>(background.getHeight());
-			ImVec2 bgPos{ position.x - (abs(bgWidth - size.x) / 2.0f),
-				          position.y - (abs(bgHeight - size.y) / 2.0f) };
+			// ImVec2 bgPos{ position.x + (abs(bgWidth - size.x) / 2.0f),
+			// 	          position.y + (abs(bgHeight - size.y) / 2.0f) };
+			ImVec2 bgPos;
+			background.getPosition(position.x, position.y, size.x, size.y, bgPos.x, bgPos.y);
 			drawList->AddImage((ImTextureID)background.getTextureID(), bgPos,
 			                   bgPos + ImVec2{ bgWidth, bgHeight });
 		}
@@ -913,32 +915,49 @@ namespace MikuMikuWorld
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 		ImGui::SameLine();
 
+		// show or not show video
 		if (video_player.Running()) { // video originally running
 			if (UI::transparentButton(ICON_FA_VIDEO, UI::btnSmall, false, video_player.Playable())) {
 				// to not play video
 				video_player.HideVideo();
-				if (video_player.play_mode == BACKGROUND) background.load();
+				if (video_player.play_mode == PlayMode::BACKGROUND) background.load();
 			}
 		}
 		else { // video player originally not running
 			if (UI::transparentButton(ICON_FA_VIDEO_SLASH, UI::btnSmall, false, video_player.Playable())){
 				// to play video
+				if (video_player.play_mode == PlayMode::BACKGROUND) background.matNewTex();
 				video_player.ShowVideo();
 			}
 		}
 
+		// show video on window or background
 		ImGui::SameLine();
-		if (video_player.play_mode == BACKGROUND) {
+		if (video_player.play_mode == PlayMode::BACKGROUND) {
 			if (UI::transparentButton(ICON_FA_EXTERNAL_LINK_ALT, UI::btnSmall, false, video_player.Running())) {
 				// to show video on window
-				video_player.ShowVideoOnPlayMode(WINDOW);
+				video_player.ShowVideoOnPlayMode(PlayMode::WINDOW);
 				background.load();
 			}
 		}
-		else if (video_player.play_mode == WINDOW) {
-			if (UI::transparentButton(ICON_FA_EXPAND, UI::btnSmall, false, video_player.Running())) {
+		else if (video_player.play_mode == PlayMode::WINDOW) {
+			if (UI::transparentButton(ICON_FA_IMAGE, UI::btnSmall, false, video_player.Running())) {
 				// to show video on background
-				video_player.ShowVideoOnPlayMode(BACKGROUND);
+				background.matNewTex();
+				video_player.ShowVideoOnPlayMode(PlayMode::BACKGROUND);
+			}
+		}
+
+		// background resizing mode
+		ImGui::SameLine();
+		if (background.getResizeMode() == ResizeMode::MIN) {
+			if (UI::transparentButton(ICON_FA_EXPAND, UI::btnSmall, false, true)) {
+				background.setResizeMode(ResizeMode::MAX);
+			}
+		}
+		else if (background.getResizeMode() == ResizeMode::MAX) {
+			if (UI::transparentButton(ICON_FA_COMPRESS, UI::btnSmall, false, true)) {
+				background.setResizeMode(ResizeMode::MIN);
 			}
 		}
 
@@ -973,11 +992,12 @@ namespace MikuMikuWorld
 		}
 
 		video_player.Update(playing, time - context.workingData.musicOffset / 1000);
-		if (video_player.BackgroundRunning()){
+		if (video_player.BackgroundRunning() && video_player.FrameReady(1)){
 			video_player.LockFrame();
 			const cv::Mat& frame = video_player.GetFrame();
 			if (!frame.empty()) background.load(frame);
 			video_player.UnlockFrame();
+			video_player.SetFrameHandled(1);
 		}
 	}
 

@@ -475,8 +475,7 @@ namespace MikuMikuWorld
 		std::wstring wFilename = IO::mbToWideStr(filename);
 
 		for(int i = 0; i < fileExtension.size(); i++) fileExtension[i] = std::tolower(fileExtension[i]);
-		if (fileExtension == ".mp4" || fileExtension == ".avi" || fileExtension == ".mkv"
-				|| fileExtension == ".mov" || fileExtension == ".wmv"){
+		if (fileExtension == ".mp4" || fileExtension == ".avi" || fileExtension == ".mkv" || fileExtension == ".wmv"){
 			// 从视频文件中提取音频，保存为临时文件 .temp.flac
 			audio_filename = filename + ".temp.flac";
 			std::wstring cmd = IO::mbToWideStr(Application::getAppDir())
@@ -497,6 +496,8 @@ namespace MikuMikuWorld
 			executeCommand(cmd);
 
 			timeline.video_player.OpenVideo(filename);
+			if (timeline.video_player.play_mode == PlayMode::BACKGROUND)
+				timeline.background.matNewTex();
 			timeline.video_player.ShowVideo();
 		}
 		else{

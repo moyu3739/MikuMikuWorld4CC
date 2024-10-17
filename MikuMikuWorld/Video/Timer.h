@@ -19,6 +19,11 @@ public:
         return access;
     }
 
+    // whether the timer is active
+    bool Active(){
+        return active;
+    }
+
     // start the timer
     void StartTimer(){
         if(!access) return;
@@ -37,7 +42,7 @@ public:
     // @return the time elapsed since the timer started
     double EndTimer(){
         if(!access) return -1;
-        double end=RecordTimer();;
+        double end=RecordTimer();
         active=false;
         return end;
     }

@@ -371,3 +371,5 @@ installer.nsi
 media/
 
 MikuMikuWorld/__discard
+
+release/

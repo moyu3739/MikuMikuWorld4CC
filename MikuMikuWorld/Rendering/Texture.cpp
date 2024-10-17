@@ -60,8 +60,8 @@ namespace MikuMikuWorld
 	Texture::Texture(const cv::Mat& cv_mat){
 		filename = "From cv::Mat";
 		name = "cv_mat";
-		// width = cv_mat.cols;
-		// height = cv_mat.rows;
+		width = cv_mat.cols;
+		height = cv_mat.rows;
 		int nrChannels = cv_mat.channels();
 		GLenum format = nrChannels == 3 ? GL_BGR : GL_BGRA;
 		
@@ -83,6 +83,8 @@ namespace MikuMikuWorld
 	void Texture::loadMat(const cv::Mat& cv_mat){
 		// 在已经存在的纹理上加载cv::Mat
 		if (glID == 0) throw std::runtime_error("No Texture");
+		width = cv_mat.cols;
+		height = cv_mat.rows;
 		int nrChannels = cv_mat.channels();
 		GLenum format = nrChannels == 3 ? GL_BGR : GL_BGRA;
 
