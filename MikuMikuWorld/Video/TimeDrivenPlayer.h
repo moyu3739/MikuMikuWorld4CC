@@ -79,6 +79,10 @@ public:
         frame_ready &= ~(1u << backend_id);
     }
 
+    void SetFrameReady(unsigned int backend_id){
+        frame_ready |= 1u << backend_id;
+    }
+
 private:
     static void WindowPlay(TimeDrivenPlayer* player);
 
@@ -92,7 +96,7 @@ private:
 
     void ShowVideoOnWindow();
 
-    void SetFrameReady(){
+    void SetAllFrameReady(){
         frame_ready = 0xFFFFFFFF;
     }
 

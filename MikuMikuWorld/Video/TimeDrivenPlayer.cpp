@@ -40,7 +40,7 @@ void TimeDrivenPlayer::HideVideo(){
 }
 
 void TimeDrivenPlayer::ShowVideo(){
-    SetFrameReady(); // 重置帧标记
+    SetAllFrameReady(); // 重置帧标记
     switch (play_mode){
         case PlayMode::BACKGROUND: ShowVideoOnBackground(); break;
         case PlayMode::WINDOW: ShowVideoOnWindow(); break;
@@ -121,7 +121,7 @@ void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
     cv::namedWindow("Video Player", cv::WINDOW_NORMAL); // 允许调整窗口大小
     cv::setWindowProperty("Video Player", cv::WND_PROP_TOPMOST, 1); // 置顶窗口
 
-    Timer tm;
+    Timer tm; // 用于给持续处于播放状态但没有新帧的状态进行计时
     while (player->window_running) {
         if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1) break;
 
@@ -138,6 +138,7 @@ void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
             title += " (" + std::to_string(ROUND(player->RenderFPS())) + " FPS)";
         cv::setWindowTitle("Video Player", title);
 
+        // 只有当有新帧时才渲染
         if (player->FrameReady(0)){
             try{
                 if (tm.Active()) tm.EndTimer();
@@ -163,12 +164,12 @@ void TimeDrivenPlayer::WindowPlay(TimeDrivenPlayer* player){
             }
         }
         else if (!player->playing){
-            cv::waitKey(100);
+            cv::waitKey(50);
         }
         else{ // 如果处于播放状态，但连续1秒没有新帧，需要响应一下输入（这种情况一般是视频结束，或外部播放标志和时间轴异常不同步）
             if (!tm.Active()) tm.StartTimer();
             else if (tm.ReadTimer() > 1)
-                cv::waitKey(100);
+                cv::waitKey(50);
         }
     }
     player->window_running = false;
@@ -195,7 +196,7 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
                 player->cap->read(player->frame_mat);
                 player->frame_mtx.unlock();
                 player->frame_id = target_frame_id;
-                player->SetFrameReady();
+                player->SetAllFrameReady();
             }
         }
 		// 处于播放状态
@@ -206,7 +207,7 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
                 player->cap->read(player->frame_mat);
                 player->frame_mtx.unlock();
 				player->frame_id = target_frame_id;
-                player->SetFrameReady();
+                player->SetAllFrameReady();
 
                 // player->UpdateHistoryCaptureFrame(); // 更新历史取帧信息
 			}
@@ -222,7 +223,7 @@ void TimeDrivenPlayer::Capture(TimeDrivenPlayer* player){
 				player->cap->read(player->frame_mat);
                 player->frame_mtx.unlock();
 				player->frame_id = target_frame_id;
-                player->SetFrameReady();
+                player->SetAllFrameReady();
 
                 // player->UpdateHistoryCaptureFrame(); // 更新历史取帧信息
 			}
@@ -245,14 +246,18 @@ void TimeDrivenPlayer::MonitorWindowSize(TimeDrivenPlayer* player) {
 
         try {
             cv::Rect window_rect = cv::getWindowImageRect("Video Player");
-            player->window_width = window_rect.width;
-            player->window_height = window_rect.height;
+            
+            if(player->window_width != window_rect.width || player->window_height != window_rect.height){
+                player->window_width = window_rect.width;
+                player->window_height = window_rect.height;
+                player->SetFrameReady(0);
+            }
         }
         catch(const cv::Exception& e) {
             if (cv::getWindowProperty("Video Player", cv::WND_PROP_VISIBLE) < 1) break;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     player->window_running = false;
 }
