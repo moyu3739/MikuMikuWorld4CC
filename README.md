@@ -1,52 +1,26 @@
-**English** / [日本語](./README.ja.md)
+# MMW-Video
 
-# MikuMikuWorld for Chart Cyanvas
-[![](https://byob.yarr.is/sevenc-nanashi/MikuMikuWorld4CC/coverage-en)](./MikuMikuWorld/res/i18n/en.csv)
-[![](https://byob.yarr.is/sevenc-nanashi/MikuMikuWorld4CC/coverage-ja)](./MikuMikuWorld/res/i18n/ja.csv)
-[![](https://byob.yarr.is/sevenc-nanashi/MikuMikuWorld4CC/coverage-es)](./MikuMikuWorld/res/i18n/es.csv)
-[![](https://byob.yarr.is/sevenc-nanashi/MikuMikuWorld4CC/coverage-kr)](./MikuMikuWorld/res/i18n/kr.csv)
-[![](https://byob.yarr.is/sevenc-nanashi/MikuMikuWorld4CC/coverage-ru)](./MikuMikuWorld/res/i18n/ru.csv)
-[![](https://byob.yarr.is/sevenc-nanashi/MikuMikuWorld4CC/coverage-vi)](./MikuMikuWorld/res/i18n/vi.csv)
-[![](https://byob.yarr.is/sevenc-nanashi/MikuMikuWorld4CC/coverage-tr)](./MikuMikuWorld/res/i18n/tr.csv)
+**This is a fork from [MikuMikuWorld4CC](https://github.com/sevenc-nanashi/MikuMikuWorld4CC).**
+What's new is that now you can **play video** synchronously with music.
 
-Fork of [MikuMikuWorld](https://github.com/crash5band/MikuMikuWorld) for [Chart Cyanvas](https://github.com/sevenc-nanashi/chart_cyanvas).
 
-## Added Features:
+### How to use?
+There are 2 additional things compared to original MikuMikuWorld4CC:
++ When you open a music file, you can also choose a video file. **MP4** format is suggested especially for high-frame-rate video (FPS > 31)
+    <div align=center>
+    <img src="image/open_video.jpg" style="zoom: 50%;" />
+    </div>
 
-In addition to the original features of MikuMikuWorld, the following features are added:
++ At the bottom of interface, there are 3 new buttons. Press the first one to show the video you have imported. Press the second one to switch playing mode (new window / background).
+    <div align=left>
+    <img src="image/interface.jpg" style="zoom: 75%;" />
+    </div>
 
--   Damage notes
--   Extended lanes
--   Colored guides
--   New ease types
--   Interpolate Hi-Speeds feature
--   Repeat Hold Mids feature
--   Note Properties panel
--   Support for decimal note lane and width
+    <div align=left>
+    <img src="image/background.jpg" style="zoom: 20%;" />
+    <img src="image/window.jpg" style="zoom: 20%;" />
+    </div>
 
-## Translations:
-
-If you want to contribute a translation, please see [the guide](./TRANSLATION.md).
-
--   日本語 (Japanese) by @sevenc_nanashi
--   Español (Spanish) by @mi.honesta.reaccion
--   Русский (Russian) by @\_notfallen\_
--   Tiếng Việt (Vietnamese) by @uwulovecrosshand
--   한글 (Korean) by @fjordic
--   Türkçe (Turkish) by @sctech-tr
-
-## Requirements:
-
--   64-bit Windows 10 or higher\*.
--   [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe).
--   GPU supporting OpenGL 3.3 with latest drivers installed.
-
-\*Earlier versions of Windows may work but not tested.
-
-## Download:
-
-The latest version can be downloaded [here](https://github.com/sevenc-nanashi/MikuMikuWorld/releases/latest/download/MikuMikuWorld.zip).
-
-## Screenshot:
-
-TODO
+### Note
++ This project is developed based on MikuMikuWorld4CC-3.1.2.30. So modification after 3.1.2.30 may be not contained. And it also may not be compatible with too old versions.
++ The copyright of MikuMikuWorld4CC belongs to the original author [@sevenc-nanashi](https://github.com/sevenc-nanashi)
